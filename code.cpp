@@ -67,6 +67,15 @@ class diary{
         int pos_count;
 };
 
+void diary::print_summary(){
+    printf("%s\n", d.to_string().c_str());
+    if (content.size() > 20) {
+        printf("%s...\n", content.substr(0, 20).c_str());
+    }
+    else{
+        printf("%s", content.c_str());
+    }
+}
 
 diary::diary(string date_str, string content, vector<string> pos)
     :d(date_str)
@@ -129,12 +138,20 @@ int main(){
             }
                 break;
             case 1:{
-                vector<diary>::iterator diary_it = find_if(diaries.begin(), diaries.end(), [&](diary cur){return cur.get_date() == date(date_str_temp);});
+                vector<diary>::iterator diary_it = find_if(diaries.begin(), diaries.end(), [&](diary cur){return cur.get_date() == date(word_from_position(it, line));});
                 diary_it -> print_full();
             }
                 break;
             case 2:{
-
+                vector<diary>::iterator diary_it, ind = diaries.begin();
+                for (diary_it = diaries.begin(); diary_it != diaries.end(); ++diary_it) {
+                    int mx = (int)ind -> get_content().size(), sz = (int)diary_it -> get_content().size();
+                    date d = ind -> get_date(), td = diary_it -> get_date();
+                    if (sz > mx || (sz == mx && td <= d)) {
+                        ind = diary_it;
+                    }
+                }
+                ind -> print_summary();
             }
                 break;
         }
