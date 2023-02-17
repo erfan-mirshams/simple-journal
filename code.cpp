@@ -16,17 +16,19 @@ int is_good_word(string word, vector<string> pos){
     return (find(pos.begin(), pos.end(), word) != pos.end());
 }
 
-string word_from_position(string::iterator &it, string &line){
+string word_from_position(string::iterator &it, string::iterator fn){
     while(isspace(*(it++)));
     --it;
     string::iterator i = it;
-    for (; i != line.end(); ++i) {
+    string res = "";
+    for (; i != fn; ++i) {
         if(isspace(*i)){
             break;
         }
+        res.push_back(*i);
     }
     swap(i, it); /*because it is a reference*/
-    return line.substr(i - line.begin(), it - i);
+    return res;
 }
 
 class date {
@@ -52,14 +54,15 @@ string date::to_string(){
     return string(ch);
 }
 
-
 class diary{
     public:
         diary(string date_str, string content, vector<string> pos);
         void print_full(){printf("%s", content.c_str());}
         void print_summary();
+        void append_content(string content){this -> content.append(content);}
         date get_date() {return d;}
         string get_content() {return content;}
+        int get_content_size() {return (int)content.size();}
         int get_pos_count() {return pos_count;}
     private:
         date d;
@@ -84,10 +87,25 @@ diary::diary(string date_str, string content, vector<string> pos)
     this -> pos_count = 0;
     string::iterator it = content.begin();
     while(it != content.end()){
-        pos_count += is_good_word(word_from_position(it, content), pos);
+        pos_count += is_good_word(word_from_position(it, content.end()), pos);
     }
 }
 
+vector<diary>::iterator find_diary_with_highest_val(vector<diary>::iterator st, vector<diary>::iterator fn, int (diary::*get_val)()){
+    vector<diary>::iterator diary_it, ind = st;
+    for (diary_it = st; diary_it != fn; ++diary_it) {
+        int mx = (*ind.*get_val)(), sz = (*diary_it.*get_val)();
+        date d = ind -> get_date(), td = diary_it -> get_date();
+        if (sz > mx || (sz == mx && td <= d)) {
+            ind = diary_it;
+        }
+    }
+    return ind;
+}
+
+vector<diary>::iterator find_diary_from_date_string(vector<diary>::iterator st, vector<diary>::iterator fn, string date_str){
+    return find_if(st, fn, [&](diary cur){return cur.get_date() == date(date_str);});
+}
 
 void read_positive_words(vector<string> &pos){
     ifstream f(POSWORDSFILE);
@@ -113,7 +131,7 @@ int main(){
         line.push_back('\n'); /*apparently endline counts as a character*/
 
         string::iterator it = line.begin();
-        string first_word = word_from_position(it, line);
+        string first_word = word_from_position(it, line.end());
 
         int i;
         for (i = 0; i < COMMANDSIZE; i++) {
@@ -127,31 +145,35 @@ int main(){
         }
         else {
             if (date_str_temp.compare("")) {
-                diaries.push_back(diary(date_str_temp, content_temp, pos));
+                vector<diary>::iterator diary_it = find_diary_from_date_string(diaries.begin(), diaries.end(), date_str_temp);
+                if (diary_it == diaries.end()) {
+                    diaries.push_back(diary(date_str_temp, content_temp, pos));
+                }
+                else{
+                    diary_it -> append_content(content_temp);
+                }
             }
             content_temp.clear();
         }
 
         switch (i) {
             case 0:{
-                date_str_temp = word_from_position(it, line);
+                date_str_temp = word_from_position(it, line.end());
             }
                 break;
             case 1:{
-                vector<diary>::iterator diary_it = find_if(diaries.begin(), diaries.end(), [&](diary cur){return cur.get_date() == date(word_from_position(it, line));});
+                vector<diary>::iterator diary_it = find_diary_from_date_string(diaries.begin(), diaries.end(), word_from_position(it, line.end()));
                 diary_it -> print_full();
             }
                 break;
             case 2:{
-                vector<diary>::iterator diary_it, ind = diaries.begin();
-                for (diary_it = diaries.begin(); diary_it != diaries.end(); ++diary_it) {
-                    int mx = (int)ind -> get_content().size(), sz = (int)diary_it -> get_content().size();
-                    date d = ind -> get_date(), td = diary_it -> get_date();
-                    if (sz > mx || (sz == mx && td <= d)) {
-                        ind = diary_it;
-                    }
-                }
-                ind -> print_summary();
+                vector<diary>::iterator diary_it = find_diary_with_highest_val(diaries.begin(), diaries.end(), &diary::get_content_size);
+                diary_it -> print_summary();
+            }
+                break;
+            case 3:{
+                vector<diary>::iterator diary_it = find_diary_with_highest_val(diaries.begin(), diaries.end(), &diary::get_pos_count);
+                diary_it -> print_summary();
             }
                 break;
         }
